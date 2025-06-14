@@ -1,6 +1,68 @@
+'use client';
+
 import Image from "next/image";
+import { useState } from "react";
+
+interface WeatherData {
+  temperature: number;
+  condition: string;
+  humidity: number;
+  timestamp: string;
+}
+
+interface Todo {
+  id: number;
+  title: string;
+  completed: boolean;
+}
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
 
 export default function Home() {
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [newTodo, setNewTodo] = useState("");
+
+  const fetchWeather = async () => {
+    const res = await fetch("/api/weather");
+    const data = await res.json();
+    setWeatherData(data);
+  };
+
+  const fetchTodos = async () => {
+    const res = await fetch("/api/todos");
+    const data = await res.json();
+    setTodos(data);
+  };
+
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTodo.trim()) return;
+
+    const res = await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTodo }),
+    });
+
+    if (res.ok) {
+      setNewTodo("");
+      fetchTodos();
+    }
+  };
+
+  const fetchUsers = async () => {
+    const res = await fetch("/api/users");
+    const data = await res.json();
+    setUsers(data);
+  };
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -98,6 +160,98 @@ export default function Home() {
           Go to nextjs.org →
         </a>
       </footer>
+
+      <main className="min-h-screen p-8">
+        <h1 className="text-4xl font-bold mb-8">Next.js Serverless API Demo</h1>
+
+        {/* Weather Section */}
+        <section className="mb-8 p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-semibold mb-4">Weather API</h2>
+          <button
+            onClick={fetchWeather}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Get Weather
+          </button>
+          {weatherData && (
+            <div className="mt-4">
+              <p>Temperature: {weatherData.temperature}°C</p>
+              <p>Condition: {weatherData.condition}</p>
+              <p>Humidity: {weatherData.humidity}%</p>
+            </div>
+          )}
+        </section>
+
+        {/* Todos Section */}
+        <section className="mb-8 p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-semibold mb-4">Todos API</h2>
+          <form onSubmit={addTodo} className="mb-4">
+            <input
+              type="text"
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              className="border p-2 rounded mr-2"
+              placeholder="New todo"
+            />
+            <button
+              type="submit"
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            >
+              Add Todo
+            </button>
+          </form>
+          <button
+            onClick={fetchTodos}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Fetch Todos
+          </button>
+          <ul className="mt-4">
+            {todos.map((todo) => (
+              <li key={todo.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={async () => {
+                    await fetch("/api/todos", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        id: todo.id,
+                        completed: !todo.completed,
+                      }),
+                    });
+                    fetchTodos();
+                  }}
+                />
+                <span className={todo.completed ? "line-through" : ""}>
+                  {todo.title}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Users Section */}
+        <section className="mb-8 p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-semibold mb-4">Users API</h2>
+          <button
+            onClick={fetchUsers}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Fetch Users
+          </button>
+          <div className="mt-4 grid gap-4">
+            {users.map((user) => (
+              <div key={user.id} className="p-4 border rounded">
+                <p>Name: {user.name}</p>
+                <p>Email: {user.email}</p>
+                <p>Role: {user.role}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
